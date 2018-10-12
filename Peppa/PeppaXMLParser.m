@@ -64,14 +64,14 @@ inline static bool peppa_is_whiteSpace(unsigned char c) {
 
 inline static bool peppa_is_attribute_name_valid(char c){
     return peppa_is_alpha(c) ||
-           peppa_is_number(c) ||
-          (c >= 0x23 && c<= 0x26) || // # % & $
-           c == '@' ||
-           c == '_' ||
-           c == '-' ||
-           c == ':' ||
-           c == '{' ||
-           c == '}';
+    peppa_is_number(c) ||
+    (c >= 0x23 && c<= 0x26) || // # % & $
+    c == '@' ||
+    c == '_' ||
+    c == '-' ||
+    c == ':' ||
+    c == '{' ||
+    c == '}';
 }
 
 @interface PeppaXMLParser()
@@ -94,7 +94,7 @@ inline static bool peppa_is_attribute_name_valid(char c){
 }
 
 - (instancetype)initWithText:(NSString *)text
-     deatchLayoutInfomation:(BOOL)deatchLayoutInfomation{
+      deatchLayoutInfomation:(BOOL)deatchLayoutInfomation{
     if (self = [super init]) {
         if (text && text.length) {
             _utf8Iterator            = [[PeppaUTF8Iterator alloc] initWithText:text
@@ -118,7 +118,7 @@ inline static bool peppa_is_attribute_name_valid(char c){
     [self notifyStart];
     int c = [_utf8Iterator getNextCharacter];
     _currentTokenState = (c == kCharStartAngleBracket) ? PeppaTokenStateOpenTag : PeppaTokenStatePlainText;
-   
+    
     while (!_stop) {
         switch (_currentTokenState) {
             case PeppaTokenStatePlainText:
@@ -279,6 +279,12 @@ inline static bool peppa_is_attribute_name_valid(char c){
         case kCharSlash:
             _currentTokenState = PeppaTokenStateSelfCloseTag;
             break;
+        case kCharEndAngleBracket:
+            _currentTokenState = PeppaTokenStateTagFinish;
+            [self notifyOpenTagName:_currentTagName
+                         attributes:_attributes
+                 mustacheAttributes:_mustacheAttributes];
+            break;
         default:
             if (peppa_is_attribute_name_valid(c)) {
                 _currentTokenState = PeppaTokenStateAttributeName;
@@ -385,9 +391,9 @@ inline static bool peppa_is_attribute_name_valid(char c){
     else {
         attributes = _attributes;
     }
-
+    
     [attributes setObject:value forKey:_currentAttributeName];
-
+    
     c = [_utf8Iterator getNextCharacter];
     switch (c) {
         case kCharTab:
@@ -421,6 +427,7 @@ inline static bool peppa_is_attribute_name_valid(char c){
     switch (c) {
         case kCharEndAngleBracket:
             _currentTokenState = PeppaTokenStateTagFinish;
+            [self notifyOpenTagName:_currentTagName attributes:_attributes mustacheAttributes:_mustacheAttributes];
             break;
         default:
             if (peppa_is_attribute_name_valid(c)) {
@@ -475,7 +482,7 @@ inline static bool peppa_is_attribute_name_valid(char c){
     
     if (c != kCharEOF) {
         NSString *tagName = [self extractSubStringWithStartPosition:tagNameStartPosition
-                                                                   length:tagNameLength];
+                                                             length:tagNameLength];
         [self notifyCloseTagName:tagName];
         _currentTokenState = PeppaTokenStateTagFinish;
     }
@@ -487,7 +494,7 @@ inline static bool peppa_is_attribute_name_valid(char c){
 
 - (void)processTagFinish{
     int c = [_utf8Iterator getNextCharacter];
-    while (peppa_is_whiteSpace(c)) {
+    while (peppa_is_whiteSpace(c) || c == kCharSpace) {
         c = [_utf8Iterator getNextCharacter];
     }
     
@@ -569,7 +576,7 @@ inline static bool peppa_is_attribute_name_valid(char c){
         [self notifyScript:scriptContent];
         [self processTagFinish];
     }
-
+    
     if (c == kCharEOF) {
         _stop = YES;
         [self notifyErrorWithCode:90040];
